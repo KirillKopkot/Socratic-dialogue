@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Socrat"
     ENVIRONMENT: str = "development"
 
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/socrat"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

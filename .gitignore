@@ -1,11 +1,14 @@
 .claude/
+
 node_modules/
 dist/
 build/
-.DS_Store
-Thumbs.db
+
 .env
 .env.local
+
 *.log
 .vscode/
 .idea/
+.DS_Store
+Thumbs.db
