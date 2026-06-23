@@ -4,7 +4,7 @@ An interactive web app where users engage in philosophical dialogues with an AI�
 
 ## Current Status
 
-**Frontend UI complete. FastAPI backend skeleton scaffolded. Database, auth, and AI integration still pending.**
+**Frontend UI complete. FastAPI backend with PostgreSQL connection layer scaffolded. Database models, auth, and AI integration still pending.**
 
 ### Frontend — Complete UI
 - **`frontend/index.html`**: Landing page with header (Login/Registration links point to YouTube placeholder), hero section featuring Socrates quote, explanation of Socratic dialogue, CTA with "Start" button, and footer with social links.
@@ -21,15 +21,17 @@ An interactive web app where users engage in philosophical dialogues with an AI�
 - **`frontend/style.css` + `frontend/chat.css`**: Complete styling for landing page and chat interface
 - **`frontend/images/`**: Favicon, Socrates statue image, wreath, and social icons
 
-### Backend — Skeleton in Place
-- **`backend/app/main.py`**: FastAPI application with CORS middleware configured for `localhost:5500` (VSCode Live Server). Includes:
-  - Root endpoint (`GET /`) returning project info
-  - Health check endpoint (`GET /health`)
-  - Ready for additional routes (conversations, messages, chat)
-- **`backend/app/config.py`**: Settings management via Pydantic, loads from `.env` file
-- **`backend/requirements.txt`**: FastAPI, Uvicorn, Pydantic Settings
+### Backend — FastAPI + PostgreSQL Connection
+- **`backend/app/main.py`**: FastAPI application with CORS middleware configured for `localhost:5500` (VSCode Live Server). Endpoints:
+  - `GET /` — project info
+  - `GET /health` — API health check
+  - `GET /health/db` — database connection test
+- **`backend/app/config.py`**: Settings management via Pydantic (loads from `.env`), includes DATABASE_URL
+- **`backend/app/database.py`**: SQLAlchemy engine, session factory, and declarative base ready for models
+- **`backend/requirements.txt`**: FastAPI, Uvicorn, Pydantic Settings, SQLAlchemy, psycopg2-binary
+- **`docker-compose.yml`**: PostgreSQL 16 service with persistent volume, environment variables for credentials
+- **`backend/.env.example`**: Template with PostgreSQL connection and credentials (defaulting to `postgres:postgres@localhost:5432/socrat`)
 - **`backend/Dockerfile`**: Python 3.12 slim container, runs Uvicorn on port 8000
-- **`backend/.env.example`**: Template for environment variables
 - **`.venv/`**: Python virtual environment with dependencies installed
 
 ### What's Missing
@@ -45,16 +47,17 @@ An interactive web app where users engage in philosophical dialogues with an AI�
 | Component | Status | Details |
 |-----------|--------|---------|
 | **Frontend** | ✅ Complete | Vanilla HTML/CSS/JS (no build step); mock data only |
-| **Backend** | 🔄 In progress | FastAPI skeleton; needs DB, auth, AI routes |
-| **Database** | ⭕ Not started | PostgreSQL + SQLAlchemy models (User, Conversation, Message) |
+| **Backend** | 🔄 In progress | FastAPI app with CORS, config, health checks; needs auth, AI routes |
+| **Database** | 🔄 In progress | PostgreSQL 16 + Docker Compose (connection layer ready); models pending |
 | **Auth** | ⭕ Not started | Auth0 integration to replace hardcoded user |
 | **AI** | ⭕ Not started | Google Gemini API with Socratic system prompt |
 
 ## Roadmap
 
 - [x] Scaffold FastAPI backend with basic project structure
-- [ ] Set up PostgreSQL and SQLAlchemy: User, Conversation, Message models
-- [ ] Create database connection pool and migration setup
+- [x] Set up PostgreSQL and SQLAlchemy connection layer (Docker Compose, database.py, config)
+- [ ] Define ORM models: User, Conversation, Message (with relationships and timestamps)
+- [ ] Create database migrations (Alembic) and seed initial schema
 - [ ] Integrate Auth0 for authentication; replace hardcoded user
 - [ ] Build backend API endpoints:
   - `POST /api/conversations` — create new dialogue
@@ -77,32 +80,52 @@ An interactive web app where users engage in philosophical dialogues with an AI�
 
 **Note:** Login/Registration buttons point to a YouTube placeholder and are not functional.
 
-### Backend (Local Development)
+### Backend + Database (Local Development)
 
-1. Navigate to the `backend/` folder
-2. Activate the virtual environment:
+**Option 1: Local PostgreSQL via Docker Compose** (recommended)
+
+1. In the project root, start PostgreSQL:
    ```bash
+   docker-compose up -d
+   ```
+   This spins up a PostgreSQL 16 container on `localhost:5432` with database `socrat`.
+
+2. Navigate to `backend/` and activate the virtual environment:
+   ```bash
+   cd backend
+   
    # Windows (PowerShell)
    .venv\Scripts\Activate.ps1
    
    # macOS/Linux
    source .venv/bin/activate
    ```
+
 3. Start the FastAPI dev server:
    ```bash
    uvicorn app.main:app --reload
    ```
-   The API will be available at `http://localhost:8000`, with interactive docs at `http://localhost:8000/docs`
+   The API will be available at `http://localhost:8000`, with interactive docs at `http://localhost:8000/docs`.
 
-4. (Optional) Run the backend in Docker:
-   ```bash
-   docker build -t socrat-backend .
-   docker run -p 8000:8000 socrat-backend
+4. Test the database connection:
    ```
+   curl http://localhost:8000/health/db
+   ```
+   Should return `{"database": "ok"}`.
 
-### What Doesn't Work Yet
+**Option 2: Docker Compose for Backend + Database**
 
-- Frontend cannot call backend (no database or API routes)
-- No authentication—"Kirill" user is hardcoded in sidebar
-- No AI responses—frontend has mocked replies only
-- No conversation persistence or history
+```bash
+docker-compose up -d
+docker build -t socrat-backend ./backend
+docker run -p 8000:8000 --network socrat-setup_default -e DATABASE_URL=postgresql://postgres:postgres@db:5432/socrat socrat-backend
+```
+
+### What's Still Missing
+
+- **Database models**: User, Conversation, Message tables not yet defined
+- **API routes**: No `/api/conversations` or message endpoints yet
+- **Authentication**: Auth0 not integrated; "Kirill" hardcoded in frontend sidebar
+- **AI integration**: Gemini API not yet connected; frontend has mocked Socratic responses
+- **Frontend-backend connection**: chat.js still uses mock API calls instead of real endpoints
+- **Conversation history**: Sidebar shows mock conversations; not yet loaded from database
