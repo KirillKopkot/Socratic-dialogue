@@ -1,10 +1,12 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.config import settings
 from app.database import SessionLocal
+from app.services.gemini_service import GeminiServiceError, get_socratic_response
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
@@ -50,3 +52,21 @@ def health_db():
             status_code=503,
             content={"database": "error", "detail": str(exc)},
         )
+
+
+# --- TEMPORARY: manual Gemini integration check -----------------------------
+# Remove once the real conversations/chat router exists. No auth, no DB —
+# just wraps a single message and returns the Socratic reply.
+class _TestGeminiRequest(BaseModel):
+    message: str
+
+
+@app.post("/test/gemini")
+async def test_gemini(body: _TestGeminiRequest):
+    history = [{"role": "user", "content": body.message}]
+    try:
+        response = await get_socratic_response(history)
+    except GeminiServiceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    return {"response": response}
+# --- END TEMPORARY ----------------------------------------------------------
